@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from PIL import Image, ImageOps
+from PIL import Image
 import numpy as np
 import random
 import math
@@ -16,16 +16,13 @@ def save_model(model_state, is_best_acc, filename):
 
 
 def plotNNFilter(units,fname):
-    filters = units.shape[3]
+    filters = units.shape[0]
     fig=plt.figure(1, figsize=(80,80))
     n_columns = 8
     n_rows = math.ceil(filters / n_columns) + 1
     for i in range(filters):
         ax=fig.add_subplot(n_rows, n_columns, i+1)
-        # plt.title('Filter ' + str(i))
-        data=units[i,:,:,:].reshape(3,3)
-        # print(data)
-        # img = Image.fromarray(data.astype(np.uint8), 'L')
+        data=units[i,:].reshape(3,3)
         ax.imshow(data, interpolation="nearest", cmap="gray")
         fig.savefig(fname+'.png')
 
@@ -79,8 +76,10 @@ class RandomTranslation(object):
         return img
 
 
+###### Help From https://arxiv.org/abs/1708.04896
+
 class RandomErasing(object):
-    def __init__(self, EPSILON=0.5, sl=0.02, sh=0.4, r1=0.3, mean=[0.4914, 0.4822, 0.4465]):
+    def __init__(self, EPSILON=0.5, sl=0.02, sh=0.4, r1=0.3, mean=[0.1307,0.1307]):
         self.EPSILON = EPSILON
         self.mean = mean
         self.sl = sl

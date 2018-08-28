@@ -4,12 +4,13 @@ import numpy as np
 import cv2
 import os
 import torchvision.transforms as T
-
+import copy
 
 def deprocess(img):
     transform = T.Compose([
         T.Lambda(lambda x: x[0]),
-        T.Normalize((0.1307,), (0.3081,)),
+        T.Normalize((0,), (1/0.3081,)),
+        T.Normalize((-0.1307,), (1.,)),
         T.ToPILImage(),
     ])
     return transform(img)
@@ -21,15 +22,13 @@ def save_gradient_images(gradient, file_name):
         gradient (np arr): Numpy array of the gradient with shape (3, 224, 224)
         file_name (str): File name to be exported
     """
-    if not os.path.exists('../results'):
-        os.makedirs('../results')
+    if not os.path.exists('../GBPresults'):
+        os.makedirs('../GBPresults')
 
     gradient = gradient - gradient.min()
     gradient /= gradient.max()
     gradient = np.uint8(gradient * 255).transpose(1, 2, 0)
-    path_to_file = os.path.join('../results', file_name + '.jpg')
-    # Convert RBG to GBR
-    # gradient = gradient[..., ::-1]
+    path_to_file = os.path.join('../GBPresults', file_name + '.jpg')
     cv2.imwrite(path_to_file, gradient)
 
 def save_fooling_images(gradient, file_name):
@@ -42,10 +41,9 @@ def save_fooling_images(gradient, file_name):
     if not os.path.exists('../fool'):
         os.makedirs('../fool')
 
-    path_to_file = os.path.join('../results', file_name + '.jpg')
+    path_to_file = os.path.join('../fool', file_name + '.jpg')
     X_fooling_np=deprocess(gradient)
-    X_fooling_np = np.asarray(X_fooling_np).astype(np.uint8)
-    X_fooling_np = X_fooling_np[..., ::-1]
+    X_fooling_np =  np.uint8(X_fooling_np)
     cv2.imwrite(path_to_file, X_fooling_np)
 
 

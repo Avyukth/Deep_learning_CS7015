@@ -1,0 +1,2 @@
+#!/bin/bash
+python train.py --lr 0.0001 --momentum 0.5 --num_hidden 2 --sizes 100,100 --activation sigmoid --loss ce --opt adam --batch_size 20 --anneal true --save_dir pa1/ --expt_dir pa1/exp1/ --train train.csv --test test.csv --val val.csv

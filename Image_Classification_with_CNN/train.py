@@ -15,27 +15,26 @@ from pdb import set_trace as bp
 from guided import GuidedBackprop ,save_gradient_images,save_fooling_images
 from fooling import make_fooling_image
 from utils import plotNNFilter
-from model import FashionMNISTNet
+from model import FashionMNISTNet,BasicFashionMNISTNet
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", type=str, default='FashionMNISTNet', help="model")
+parser.add_argument("--model", type=int, default=1, help="default 1 is BEST Model 2 is BASE Model ")
+parser.add_argument("--lr", type=float, default=0.001, help="default Learning Rate .001 ")
 parser.add_argument("--patience", type=int, default=5, help="early stopping patience")
 parser.add_argument("--batch_size", type=int, default=100, help="batch size")
 parser.add_argument("--nepochs", type=int, default=1, help="max epochs")
-parser.add_argument("--init", type=str, default="he", help="Custom Initializer")
+parser.add_argument("--init", type=int, default=1, help="Custom Initializer : 1 for Xavier, 2 for He")
 parser.add_argument("--resume", type=str, default="", help="Saved data Location")
 parser.add_argument("--nocuda", action='store_true', help="no cuda used")
 parser.add_argument("--aug", type=bool, default=False, help="use augmented data")
 parser.add_argument("--nworkers", type=int, default=4, help="number of workers")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
-parser.add_argument("--data", type=str, default='fashion', help="mnist or fashion")
 args = parser.parse_args()
 
 cuda = not args.nocuda and torch.cuda.is_available() # use cuda
 print('Training on cuda: {}'.format(cuda))
 
 # Set seeds. If using numpy this must be seeded too.
-#torch.manual_seed(args.seed)
 if cuda:
     torch.cuda.manual_seed_all(args.seed)
 
@@ -45,7 +44,6 @@ if not os.path.exists('saved-models/'):
 if not os.path.exists('logs/'):
     os.mkdir('logs/')
 
-# Setup tensorboard folders. Each run must have it's own folder. Creates
 # a logs folder for each model and each run.
 out_dir = 'logs/{}'.format(args.model)
 if not os.path.exists(out_dir):
@@ -60,9 +58,7 @@ logfile = open('{}/log.txt'.format(current_dir), 'w')
 print(args, file=logfile)
 
 fashion_names=['T-shirt/top','Trouser','Pullover','Dress','Coat','Sandal','Shirt','Sneaker','Bag','Ankle boot']
-# Tensorboard viz. tensorboard --logdir {yourlogdir}. Requires tensorflow.
-# from tensorboard import configure, log_value
-# configure(current_dir, flush_secs=5)
+
 
 # Define transforms.
 train_transforms = transforms.Compose([
@@ -83,101 +79,13 @@ val_transforms = transforms.Compose([
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
-        if args.init=="xavier":
+        if args.init==1:
             nn.init.xavier_uniform(m.weight.data)
-        elif args.init=="he":
-            nn.init.xavier_uniform(m.weight.data)
-        else:
-            nn.init.xavier_uniform(m.weight.data)
-            # m.weight.data.normal_(1.0, 0.02)
-        # bp()
-    elif classname.find('BatchNorm') != -1:
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
+        elif args.init==2:
+            nn.init.kaiming_uniform(m.weight.data)
 
 
 
-###########################################################################################################
-##																										 ##
-##				Network Defination 																		 ##
-##																										 ##
-###########################################################################################################
-# class FashionMNISTNet(nn.Module):
-#
-#     """ Simple network"""
-#
-#     def __init__(self):
-#         super().__init__()
-#         self.features = nn.Sequential(
-#             nn.Conv2d(1, 32, kernel_size=3,stride=1, padding=1),
-#             # nn.BatchNorm2d(32),
-#             nn.ReLU(inplace=True),
-#             # nn.Conv2d(32, 64, kernel_size=3,stride=1, padding=1),
-#             # nn.ReLU(inplace=True),
-#             nn.BatchNorm2d(32),
-#             nn.MaxPool2d(kernel_size=2, stride=1),
-#             # nn.Dropout2d(),
-#             # nn.Conv2d(64, 128, kernel_size=3,stride=1, padding=1),
-#             # nn.ReLU(inplace=True),
-#             # nn.BatchNorm2d(128),
-#             # nn.MaxPool2d(kernel_size=2, stride=1),
-#             # nn.Conv2d(128, 256, kernel_size=3,stride=1, padding=1),
-#             # nn.ReLU(inplace=True),
-#             nn.Conv2d(32, 64, kernel_size=3,stride=1, padding=1),
-#             nn.ReLU(inplace=True),
-#             nn.MaxPool2d(kernel_size=3, stride=1),
-#
-#             # nn.ELU(inplace=True),
-#         )
-#         self.classifier = nn.Sequential(
-#             nn.Dropout(0.4),
-#             nn.Linear(25 * 25 * 64, 256),
-#             nn.ELU(inplace=True),
-#             nn.BatchNorm1d(256),
-#             nn.Dropout(0.4),
-#             nn.Linear(256, 256),
-#             nn.ELU(inplace=True),
-#             nn.BatchNorm1d(256),
-#             # nn.Dropout(),
-#             nn.Linear(256, 10),
-#         )
-#
-#     def forward(self, x):
-#         x = self.features(x)
-#         # bp()
-#         x = x.view(-1, 64*25*25)
-#         x = self.classifier(x)
-#         # bp()
-#         return x
-
-
-# class FashionMNISTNet(nn.Module):
-#
-#     """ Simple network"""
-#
-#     def __init__(self):
-#         super().__init__()
-#         self.features = nn.Sequential(
-#             nn.Conv2d(1,32, kernel_size=3, padding=1), # 28
-#             nn.ReLU(inplace=True),
-#             nn.MaxPool2d(kernel_size=2, stride=2), # 14
-#
-#             nn.Conv2d(32, 64, kernel_size=3, padding=1),
-#             nn.ReLU(inplace=True),
-#             nn.MaxPool2d(kernel_size=2, stride=2) # 7
-#         )
-#         self.classifier = nn.Sequential(
-#             nn.Dropout(),
-#             nn.Linear(64 * 7 * 7, 128),
-#             nn.ReLU(inplace=True),
-#             nn.Linear(128, 10)
-#         )
-#
-#     def forward(self, x):
-#         x = self.features(x)
-#         x = x.view(x.size(0), 64 * 7 * 7)
-#         x = self.classifier(x)
-#         return x
 
 
 ###########################################################################################################
@@ -285,6 +193,8 @@ class TestDatasetFromCSV():
 # Create dataloaders. Use pin memory if cuda.
 kwargs = {'pin_memory': True} if cuda else {}
 
+
+# if args.aug is True augmented data is used to train else Normal Data (as Augmented data creation is too much Time consuming we already generated the augmented data and saved it )
 if(args.aug):
     trainset = AugmentedDatasetFromCSV('data/augment_data.csv',28,28,
                             transforms=train_transforms)
@@ -328,7 +238,7 @@ def train(net, loader, criterion, optimizer):
         if cuda:
             X, y = X.cuda(), y.cuda()
         X, y = Variable(X), Variable(y)
-
+        # bp()
         output = net(X)
         loss = criterion(output, y)
         optimizer.zero_grad()
@@ -337,7 +247,6 @@ def train(net, loader, criterion, optimizer):
         running_loss += loss.data[0]
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
         running_accuracy += pred.eq(y.data.view_as(pred)).cpu().sum()
-        print(str(i) + "th epoch accuracy:" + str(pred.eq(y.data.view_as(pred)).cpu().sum()))
     return running_loss/len(loader), running_accuracy/len(loader.dataset)
 
 def validate(net, loader, criterion):
@@ -401,24 +310,21 @@ def guidedBackProp(model):
         GBP = GuidedBackprop(model,  X, y)
         # Get gradients
         guided_grads = GBP.generate_gradients()
-        # Save colored gradients
-        if i==1:
+        if i==10:
             break
-        print(guided_grads)
-        print(guided_grads.shape)
         save_gradient_images(guided_grads, str(i)+'th_image_Guided_BP')
     pass
 
 
 def fooling(model):
-    idx = 0
-    target_y = 7
-    loader = DataLoader(valset, batch_size=5,
+    # setting a Target other than original label
+    target_y = np.random.randint(0,10)
+    loader = DataLoader(valset, batch_size=10,
                         shuffle=True, num_workers=args.nworkers, **kwargs)
     for i, (X,y) in enumerate(loader):
         if cuda:
             X, y ,model= X.cuda(), y.cuda(),model.cuda()
-        if i==1:
+        if i==10:
             break
         X_tensor = X
         X_fooling = make_fooling_image(X_tensor[i:i + 1], target_y, model)
@@ -426,12 +332,17 @@ def fooling(model):
         scores = model(Variable(X_fooling))
         ori_class=y[i:i + 1].cpu().numpy()[0]
         X_fooling_out=X_fooling.cpu()
-        print(target_y == scores.data.max(1)[1])
-        # assert target_y == scores.data.max(1)[1], 'The model is not fooled!'
-        save_fooling_images(X_fooling_out, str(i) + 'th_image_is_'+str(fashion_names[ori_class])+'_classified_as'+str(fashion_names[target_y]))
+        assert bool((ori_class != scores.data.max(1)[1]).cpu().numpy()[0]), 'for {}th input the model is not fooled!'.format(i)
+        save_fooling_images(X_fooling_out, str(i) + 'th_image_is_'+str(fashion_names[ori_class])+'_as_starting_image_classified_as'+str(fashion_names[scores.data.max(1)[1].cpu().numpy()[0]]))
+
+
 
 if __name__ == '__main__':
-    net = FashionMNISTNet()
+
+    if args.model==1:
+        net = FashionMNISTNet()
+    elif args.model==2:
+        net = BasicFashionMNISTNet()
     net.apply(weights_init)
     print(net)
     criterion = torch.nn.CrossEntropyLoss()
@@ -447,7 +358,7 @@ if __name__ == '__main__':
     print(net, file=logfile)
 
     # Change optimizer for finetuning
-    optimizer = optim.Adam(net.parameters(),lr=0.001, weight_decay=0.0005)
+    optimizer = optim.Adam(net.parameters(),lr=args.lr, weight_decay=0.0005)
 
     if args.resume:
         if os.path.isfile(args.resume):
@@ -466,7 +377,7 @@ if __name__ == '__main__':
         start = time.time()
         train_loss, train_acc = train(net, train_loader,
             criterion, optimizer)
-        val_loss, val_acc = validate(net, val_loader, criterion)        
+        val_loss, val_acc = validate(net, val_loader, criterion)
         end = time.time()
 
         # print stats
@@ -478,6 +389,7 @@ if __name__ == '__main__':
         print(stats, file=logfile)
         if best_prec1 < val_acc:
             best_prec1=val_acc
+            predict(net, test_loader)
         is_best_acc=best_prec1 > val_acc
         #early stopping and save best model
         if val_loss < best_loss:
@@ -495,10 +407,16 @@ if __name__ == '__main__':
             if patience == 0:
                 print('Run out of patience!')
                 break
-    predict(net, test_loader)
-    print(net.state_dict()["features.0.weight"])
-    plotNNFilter(net.state_dict()["features.1.weight"],"test32")
-    # print(net.state_dict()["features.0.weight"])
-    # guidedBackProp(net)
+    # predict(net, test_loader)
 
-    # fooling(net)
+    ###### IN case of Base CONFIG         #########################################################################
+    if args.model==2:
+        filter=net.state_dict()["features.0.weight"].cpu().numpy()
+        plotNNFilter(filter,"filter64")
+        guidedBackProp(net)
+        fooling(net)
+    ##################################################################################################
+
+
+    
+

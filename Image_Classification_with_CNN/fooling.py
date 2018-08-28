@@ -1,6 +1,5 @@
-
 from torch.autograd import Variable
-
+import numpy as np
 
 def make_fooling_image(X, target_y, model):
     """
@@ -13,7 +12,7 @@ def make_fooling_image(X, target_y, model):
     - model: A pretrained CNN
 
     Returns:
-    - X_fooling: An image that is close to X, but that is classifed as target_y
+    - X_fooling: An image that is close to X, but that tried to classifed as target_y
     by the model.
     """
     # Initialize our fooling image to the input image, and wrap it in a Variable.
@@ -23,20 +22,19 @@ def make_fooling_image(X, target_y, model):
     learning_rate = 1
 
     # Train loop
-    for i in range(100):
+    for i in range(1,500):
 
         # Forward.
         scores = model(X_fooling_var)
 
         # Current max index.
-        _, index = scores.data.max(dim=0)
+        index = scores.data.max(dim=1)
 
-        # bp()
-        # # Break if we've fooled the model.
-        # if index[0, 0] == target_y:
-        #     break
+        # Break if we've fooled the model.
+        if index == target_y:
+            print("model fooled at iteration : "+str(i))
+            break
 
-        # Score for the target class.
         target_score = scores[0, target_y]
 
         # Backward.
@@ -51,7 +49,35 @@ def make_fooling_image(X, target_y, model):
         # Zero our image gradient.
         X_fooling_var.grad.data.zero_()
 
+
+
     return X_fooling
 
 
+###############################################################################################################################################################
 
+#One Pixel Attack
+def perturb_image(xs, img):
+    # If this function is passed just one perturbation vector,
+    # pack it in a list to keep the computation the same
+    if xs.ndim < 2:
+        xs = np.array([xs])
+
+    # Copy the image n == len(xs) times so that we can
+    # create n new perturbed images
+    tile = [len(xs)] + [1] * (xs.ndim + 1)
+    imgs = np.tile(img, tile)
+
+    # Make sure to floor the members of xs as int types
+    xs = xs.astype(int)
+
+    for x, img in zip(xs, imgs):
+        # Split x into an array of 5-tuples (perturbation pixels)
+        # i.e., [[x,y,], ...]
+        pixels = np.split(x, len(x) // 3)
+        for pixel in pixels:
+            # At each pixel's x,y position, assign its rgb value
+            x_pos, y_pos, *rgb = pixel
+            img[x_pos, y_pos] = rgb
+
+    return imgs
